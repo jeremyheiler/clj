@@ -1,0 +1,5 @@
+#!/bin/bash
+
+set -e
+
+rlwrap java -cp $(clj-env path) clojure.main

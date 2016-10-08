@@ -1,0 +1,52 @@
+#!/bin/bash
+
+# TODO: Either allow custom jar path, or to set/link custom builds
+# TODO: When specifying an uninstalled version, prompt to install it
+
+set -e
+
+readonly CLJ_HOME=$HOME/.clj
+
+readonly clj_url_prefix="http://repo1.maven.org/maven2/org/clojure/clojure"
+
+function set_clj_version()
+{
+    if [ -z ${1+x} ]; then
+        >&2 echo "Error: must specify version"
+    else
+        clj_version=$1
+    fi
+}
+
+case $1 in
+    install)
+        set_clj_version $2
+        if [ -n "${clj_version+x}" ]; then
+            remote_path=$clj_url_prefix/$clj_version/clojure-$clj_version.jar
+            status=$(curl -X HEAD -I --write-out "%{http_code}" -o /dev/null $remote_path)
+            echo $status
+            if [ $status = "200" ]; then
+                curl -o $CLJ_HOME/clojure-$clj_version.jar $remote_path
+            else
+                >&2 echo "Error: could not download version $clj_version"
+            fi
+        fi
+        ;;
+    "set")
+        set_clj_version $2
+        echo $clj_version > $CLJ_HOME/default
+        ;;
+    path)
+        if [ -n "$2" ]; then
+            set_clj_version $2
+            echo $CLJ_HOME/clojure-$clj_version.jar
+        elif [ -f $CLJ_HOME/default ]; then
+            echo $CLJ_HOME/clojure-$(cat $CLJ_HOME/default).jar
+        else
+            >&2 echo "Error: run 'clj-env set x.y.z' to set the default version"
+        fi
+        ;;
+    *)
+        echo "Usage: clj-env [install x.y.z | set x.y.z | path | path x.y.z]"
+        ;;
+esac
